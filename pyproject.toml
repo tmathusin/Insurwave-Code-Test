@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "date-extractor"
+version = "0.1.0"
+description = "Production-ready date extraction pipeline for DS -> API handoff"
+authors = [{ name="Candidate", email="candidate@example.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "spacy>=3.7,<4",
+    "pydantic>=2.7,<3",
+    "click>=8.1,<9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "black>=24.0",
+    "mypy>=1.7",
+    "types-python-dateutil",
+]
+
+[project.scripts]
+date-extractor = "date_extractor.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+disallow_untyped_defs = true
+pretty = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

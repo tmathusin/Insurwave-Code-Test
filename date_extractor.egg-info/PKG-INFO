@@ -1,0 +1,106 @@
+Metadata-Version: 2.4
+Name: date-extractor
+Version: 0.1.0
+Summary: Production-ready date extraction pipeline for DS -> API handoff
+Author-email: Candidate <candidate@example.com>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: spacy<4,>=3.7
+Requires-Dist: pydantic<3,>=2.7
+Requires-Dist: click<9,>=8.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"
+Requires-Dist: black>=24.0; extra == "dev"
+Requires-Dist: mypy>=1.7; extra == "dev"
+Requires-Dist: types-python-dateutil; extra == "dev"
+
+# Date Extraction Service (Production-Ready DS Package)
+
+A small, productionised Python package that extracts dates from free text and returns a structured JSON payload suitable for consumption by a downstream API layer.
+
+> **Notes for reviewers**
+> - Accuracy is not the focus. The solution emphasises design, modularity, testing, reliability, and developer ergonomics.
+> - Uses spaCy `en_core_web_sm` for entity detection (replaceable with a custom model in `date_extractor/extractor_spacy.py`).
+> - Standardises dates to **dd/mm/yyyy** using only Python standard library.
+> - Emits a warning when text contains digits but no date could be extracted.
+> - Ships with CLI, unit tests, logging, config, and pre-commit hooks.
+
+## Quickstart
+
+```bash
+# Python 3.10+ recommended
+python -m venv .venv && source .venv/bin/activate   # (Windows: .venv\Scripts\activate)
+pip install -U pip
+
+# Install package (editable) + dev extras
+pip install -e ".[dev]"
+
+# Download spaCy English model (runtime dependency)
+python -m spacy download en_core_web_sm
+```
+
+### Run tests
+```bash
+pytest -q
+```
+
+### CLI usage
+```bash
+# Single string (shell-escaped)
+date-extractor --text "The policy provides cover from 31st June 2019 to 1st July 2022 inclusive"
+
+# From a file
+date-extractor --file ./examples/example1.txt
+```
+
+### Library usage
+```python
+from date_extractor import extract_dates
+result = extract_dates("Policy terms from 1/1/2021 to 31/12/2022")
+# {'dates': ['01/01/2021', '31/12/2022'], 'message': 'Success'}
+```
+
+## Design Overview
+
+- `preprocess.py` – cleaning: remove special chars, strip ordinal suffixes (st/nd/rd/th).
+- `extractor_spacy.py` – wraps spaCy NER to propose date strings.
+- `postprocess.py` – standardises date strings to dd/mm/yyyy via `datetime` formats.
+- `validators.py` – sanity checks, warning if digits present but no dates extracted.
+- `pipeline.py` – orchestration; the public `extract_dates` function.
+- `cli.py` – small CLI that outputs JSON to stdout for the API team to consume.
+- `schema.py` – pydantic (optional) result schema for clarity and future evolution.
+- `config/` – basic logging and runtime settings.
+- `tests/` – unit tests for the pipeline and edge cases (incl. warnings).
+
+### Replace the model later
+Create a new `extractor_custom.py` (same interface as `extractor_spacy.extract_dates_spacy`) and switch import in `pipeline.py`—no other changes required.
+
+## Conventions & Tooling
+- **Type hints** enforced by `mypy` (basic config).
+- **Linting/formatting** via `ruff` + `black`.
+- **Pre-commit** hooks configured.
+- Minimal **Makefile** for common tasks.
+
+## Example Output
+
+```json
+{
+  "dates": ["31/06/2019", "01/07/2022"],
+  "message": "Success"
+}
+```
+or
+```json
+{
+  "dates": [],
+  "message": "Warning, dates not extracted correctly"
+}
+```
+
+## Limitations
+- Standardisation relies on heuristic parsing with built-in `datetime` only—deliberately no `dateutil`.
+- spaCy may extract imprecise spans; postprocessor tries multiple formats and month-name patterns.
+- Ambiguous / invalid calendar dates are preserved if parse fails (but filtered out by default); adjust `ALLOW_INVALID=true` in config to keep raw strings.
+
